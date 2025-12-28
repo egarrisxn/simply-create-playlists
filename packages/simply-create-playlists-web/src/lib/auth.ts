@@ -44,3 +44,8 @@ export async function clearAccessToken() {
   const c = await cookies();
   c.delete(ACCESS_COOKIE);
 }
+
+export async function getServerSpotifyToken() {
+  const c = await cookies();
+  return c.get("sp_access_token")?.value ?? null;
+}

@@ -2,8 +2,8 @@ import fs from "fs";
 import "dotenv/config";
 
 export type LocalConfig = {
-  clientId?: string;
-  redirectUri?: string;
+  clientCliId?: string;
+  redirectCliUri?: string;
   port?: number;
 };
 
@@ -23,24 +23,25 @@ export function writeJson(path: string, data: unknown) {
 }
 
 export function loadConfig(): {
-  clientId: string;
-  redirectUri: string;
+  clientCliId: string;
+  redirectCliUri: string;
   port: number;
 } {
   const cfg = readJson<LocalConfig>(CONFIG_PATH, {});
-  const clientId = process.env.SPOTIFY_CLIENT_ID || cfg.clientId;
-  const redirectUri = process.env.SPOTIFY_REDIRECT_URI || cfg.redirectUri;
-  const port = Number(process.env.SPOTIFY_PORT || cfg.port || 5173);
+  const clientCliId = process.env.SPOTIFY_CLI_CLIENT_ID || cfg.clientCliId;
+  const redirectCliUri =
+    process.env.SPOTIFY_CLI_REDIRECT_URI || cfg.redirectCliUri;
+  const port = Number(process.env.SPOTIFY_CLI_PORT || cfg.port || 5173);
 
-  if (!clientId || !redirectUri) {
+  if (!clientCliId || !redirectCliUri) {
     throw new Error(
       `Missing Spotify config.\n` +
-        `Set SPOTIFY_CLIENT_ID + SPOTIFY_REDIRECT_URI in .env, or run:\n` +
+        `Set SPOTIFY_CLI_CLIENT_ID + SPOTIFY_CLI_REDIRECT_URI in .env, or run:\n` +
         `  simply-create-playlists init`
     );
   }
 
-  return { clientId, redirectUri, port };
+  return { clientCliId, redirectCliUri, port };
 }
 
 export function initConfig() {
@@ -49,8 +50,8 @@ export function initConfig() {
 
   if (!existsCfg) {
     writeJson(CONFIG_PATH, {
-      clientId: "PASTE_YOUR_SPOTIFY_CLIENT_ID_HERE",
-      redirectUri: "http://127.0.0.1:5173/callback",
+      clientCliId: "PASTE_YOUR_SPOTIFY_CLI_CLIENT_ID_HERE",
+      redirectCliUri: "http://127.0.0.1:5173/callback",
       port: 5173,
     });
     console.log(`Created ${CONFIG_PATH}`);
@@ -62,9 +63,9 @@ export function initConfig() {
     fs.writeFileSync(
       ".env",
       [
-        "SPOTIFY_CLIENT_ID=",
-        "SPOTIFY_REDIRECT_URI=http://127.0.0.1:5173/callback",
-        "SPOTIFY_PORT=5173",
+        "SPOTIFY_CLI_CLIENT_ID=",
+        "SPOTIFY_CLI_REDIRECT_URI=http://127.0.0.1:5173/callback",
+        "SPOTIFY_CLI_PORT=5173",
         "",
       ].join("\n"),
       "utf8"

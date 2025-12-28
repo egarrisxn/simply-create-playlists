@@ -1,114 +1,79 @@
 # simply-create-playlists-web
 
-This package contains the **Next.js web application** for the Simply Create Playlists project.
+Next.js 16 web app for **Simply Create Playlists**.
+<br>
+Uses secure **PKCE OAuth** for Spotify authentication and a modern UI to track playlist generation in real time.
 
-It provides a browser-based UI on top of `playlist-core`, allowing users to authenticate with Spotify, paste an Artist – Album list, preview results, and create playlists.
+## ⚙️ Requirements
 
----
+- Spotify Developer application (Client ID required)
+- Node.js 18+ (tested on Node 25)
+- pnpm (recommended, not required)
 
-## ⚠️ Important: Use 127.0.0.1 (NOT localhost)
+## 🚨 Critical: Spotify 2025 Security Requirements
 
-Due to **Spotify redirect URI security requirements (2025)** and upcoming **Next.js dev-origin enforcement**, developers **must use `127.0.0.1` instead of `localhost`** when running the web app locally.
+Spotify enforces strict **origin matching**. To avoid **State Mismatch** errors or auth loops:
 
-### ✅ Correct
+- **Use `127.0.0.1`** instead of `localhost`
+- **Redirect URI (Spotify Dashboard):**  
+  `http://127.0.0.1:3000/api/auth/callback`
+- **Dev URL:**  
+  `http://127.0.0.1:3000`
 
-http://127.0.0.1:3000  
-http://127.0.0.1:3000/api/auth/callback
+## 🚀 Quick Start
 
-### ❌ Incorrect
+From the repo root:
 
-http://localhost:3000
+1. Install dependencies:
 
-Spotify **does not allow `localhost`** as a redirect URI.  
-Next.js will also warn (and eventually block) cross-origin dev requests if you mix these.
+```bash
+pnpm install
+```
 
----
+2. Build shared logic:
 
-## Spotify App Setup
+```bash
+pnpm build:core
+```
 
-1. Go to the **Spotify Developer Dashboard**
-2. Open your Spotify app
-3. Add this redirect URI exactly:
+3. Create `packages/simply-create-playlists-web/.env.local`:
 
-http://127.0.0.1:3000/api/auth/callback
+```bash
+SPOTIFY_WEB_CLIENT_ID=your_id_here
+SPOTIFY_WEB_REDIRECT_URI=http://127.0.0.1:3000/api/auth/callback
+```
 
-4. Save changes
+4. Run the web app:
 
----
+```bash
+pnpm dev:web
+# open http://127.0.0.1:3000
+```
 
-## Environment Variables
+## 🧭 How It Works
 
-Create a file at:
+- **Server Components**: fetch profile / session-backed data safely
+- **Client Components**: show realtime playlist creation status and progress updates
+- **PKCE Auth**: keeps the Client ID public while securing the OAuth flow
+- **Uses `playlist-core`** for the actual playlist generation engine
 
-packages/simply-create-playlists-web/.env.local
+## 🛠 Troubleshooting
 
-With the following contents:
+- **"State Mismatch"**  
+  Cookie/origin mismatch — use `127.0.0.1` everywhere (dashboard + browser URL).
 
-SPOTIFY_CLIENT_ID=your_spotify_client_id  
-SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/api/auth/callback
+- **"INVALID_CLIENT"**  
+  Dashboard mismatch — check the Client ID in `.env.local` and Spotify Developer settings.
 
----
+- **"Could not find module..."**  
+  Core build missing — run:
 
-## Running the Web App
-
-From the workspace root:
-
-pnpm install  
-pnpm -C packages/simply-create-playlists-web dev
-
-Then open:
-
-http://127.0.0.1:3000
-
----
-
-## Dev Script Recommendation
-
-To avoid cross-origin warnings, the dev server should bind to `127.0.0.1`.
-
-In packages/simply-create-playlists-web/package.json:
-
-"dev": "next dev --hostname 127.0.0.1 --port 3000"
-
----
-
-## Features (Current)
-
-- Spotify OAuth (Authorization Code + PKCE)
-- Paste Artist – Album list
-- Dry run mode
-- Public / private playlist toggle
-- Top-track-only option
-- Miss detection
-- Shared core logic via `playlist-core`
+  ```bash
+  pnpm build:core
+  ```
 
 ---
 
-## Architecture
-
-- Next.js App Router
-- Server-side Spotify API calls
-- HttpOnly cookies for auth
-- Shared logic from `playlist-core`
-- CLI and Web share the same engine
-
----
-
-## Related Packages
-
-- playlist-core — core playlist creation logic
-- simply-create-playlists-cli — command-line interface
-
----
-
-## Notes
-
-- This app is intended for development and personal use.
-- For production deployment, HTTPS is required and the redirect URI must be updated accordingly.
-- When deploying (e.g. Vercel), update the redirect URI to your HTTPS domain.
-
----
-
-## License
+## 📜 License
 
 MIT

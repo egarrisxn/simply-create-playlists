@@ -1,80 +1,60 @@
 # playlist-core
 
-Core library for building Spotify playlists from simple Artist – Album lists.
+Reusable core library for **Simply Create Playlists**.
+<br>
+turns simple **Artist - Album** lists into Spotify playlists via a smart normalization pipeline and a small Spotify Web API client.
 
-This package contains all reusable, non-CLI logic used by the Simply Create Playlists project. It is designed to be imported by other tools (such as the CLI) and makes no assumptions about filesystem layout or configuration location.
+> This package is designed to be consumed by both the CLI and the Next.js web app in this monorepo.
 
----
+## ⚙️ Requirements
 
-## Responsibilities
+- Spotify Developer application (Client ID required)
+- Node.js 18+ (tested on Node 25)
+- pnpm (recommended, not required)
 
-playlist-core is responsible for:
+## 📦 What’s Inside
 
-- Parsing album lists
-- Normalizing and matching artist / album names
-- Interacting with the Spotify Web API
-- Creating playlists
-- Adding, replacing, or clearing playlist tracks
-- Handling Spotify OAuth (PKCE)
+- **`runCore`**: The main orchestration function for playlist creation.
+- **Normalization utilities**: Cleans up `Artist - Album` input, handles common punctuation/spacing issues.
+- **Spotify API client**: Thin wrapper for search, playlist creation, and track adds.
+- **`onProgress` callbacks**: Progress events for UIs (CLI output, Web status UI).
 
-It does **not**:
-- Read environment variables directly
-- Parse command-line arguments
-- Read or write user files like playlist.txt or misses.json
+## 🧱 Build
 
----
+From the repo root:
 
-## Public API
+```bash
+pnpm --filter playlist-core build
+```
 
-The primary export is:
+If your workspace includes helper scripts (recommended), you can also use:
 
-- runCore(options)
+```bash
+pnpm build:core
+```
 
-Additional utilities (types and helpers) are re-exported from the package index.
+## 🔌 Usage (Consumers)
 
-All imports should come from the package root:
+Most users won’t call this directly—use the CLI or Web app.  
+If you do consume it inside another package, keep these patterns in mind:
 
-    import { runCore } from "playlist-core";
+- Provide an auth token (Spotify OAuth access token)
+- Provide an input list of albums parsed from `playlist.txt`
+- Provide an `onProgress` handler if you want realtime status updates
 
----
+## 🛠 Troubleshooting
 
-## Usage
+- **"Could not find module..."**  
+  Core build missing — run:
 
-This package is not typically used directly by end users.
-
-It is consumed by:
-- simply-create-playlists-cli
-
----
-
-## Build
-
-From the workspace root:
-
-    pnpm build
-
-Or from this package directory:
-
-    pnpm build
-
-Compiled output is written to the dist/ directory.
+  ```bash
+  pnpm --filter playlist-core build
+  # or
+  pnpm build:core
+  ```
 
 ---
 
-## Package Structure
-
-    playlist-core/
-    ├─ src/
-    │  ├─ index.ts
-    │  ├─ list.ts
-    │  ├─ normalize.ts
-    │  └─ spotify.ts
-    ├─ dist/          # generated
-    ├─ package.json
-    └─ tsconfig.json
-
----
-
-## License
+## 📜 License
 
 MIT

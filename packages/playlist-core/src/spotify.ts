@@ -23,6 +23,8 @@ export const SCOPES = [
   "playlist-modify-public",
 ] as const;
 
+const BASE_URL = "https://api.spotify.com/v1";
+
 export async function spotifyFetch<T>(
   url: string,
   token: string,
@@ -46,7 +48,7 @@ export async function spotifyFetch<T>(
 }
 
 export async function getMe(token: string) {
-  return spotifyFetch<{ id: string }>("https://api.spotify.com/v1/me", token);
+  return spotifyFetch<{ id: string }>(`${BASE_URL}/me`, token);
 }
 
 export async function createPlaylist(
@@ -57,7 +59,7 @@ export async function createPlaylist(
   description: string
 ) {
   return spotifyFetch<{ id: string; external_urls: { spotify: string } }>(
-    `https://api.spotify.com/v1/users/${encodeURIComponent(userId)}/playlists`,
+    `${BASE_URL}/users/${encodeURIComponent(userId)}/playlists`,
     token,
     {
       method: "POST",
@@ -76,8 +78,7 @@ export async function searchAlbum(
 
   const strictQ = `album:${album} artist:${artist}`;
   const strictUrl =
-    `https://api.spotify.com/v1/search?type=album&limit=10&q=` +
-    encodeURIComponent(strictQ);
+    `${BASE_URL}/search?type=album&limit=10&q=` + encodeURIComponent(strictQ);
 
   const strict = await spotifyFetch<SpotifySearchAlbumsResponse>(
     strictUrl,
@@ -97,8 +98,7 @@ export async function searchAlbum(
 
   const looseQ = `${artist} ${album}`;
   const looseUrl =
-    `https://api.spotify.com/v1/search?type=album&limit=10&q=` +
-    encodeURIComponent(looseQ);
+    `${BASE_URL}/search?type=album&limit=10&q=` + encodeURIComponent(looseQ);
 
   const loose = await spotifyFetch<SpotifySearchAlbumsResponse>(
     looseUrl,
@@ -121,8 +121,7 @@ export async function searchAlbum(
 export async function getAlbumTracks(token: string, albumId: string) {
   const uris: string[] = [];
   let next: string | null =
-    `https://api.spotify.com/v1/albums/${encodeURIComponent(albumId)}` +
-    `/tracks?limit=50`;
+    `${BASE_URL}/albums/${encodeURIComponent(albumId)}` + `/tracks?limit=50`;
 
   while (next) {
     const page: AlbumTracksPage = await spotifyFetch<AlbumTracksPage>(
@@ -144,9 +143,7 @@ export async function addTracks(
   for (let i = 0; i < uris.length; i += 100) {
     const chunk = uris.slice(i, i + 100);
     await spotifyFetch(
-      `https://api.spotify.com/v1/playlists/${encodeURIComponent(
-        playlistId
-      )}/tracks`,
+      `${BASE_URL}/playlists/${encodeURIComponent(playlistId)}/tracks`,
       token,
       { method: "POST", body: JSON.stringify({ uris: chunk }) }
     );
@@ -155,9 +152,7 @@ export async function addTracks(
 
 export async function clearPlaylist(token: string, playlistId: string) {
   await spotifyFetch(
-    `https://api.spotify.com/v1/playlists/${encodeURIComponent(
-      playlistId
-    )}/tracks`,
+    `${BASE_URL}/playlists/${encodeURIComponent(playlistId)}/tracks`,
     token,
     { method: "PUT", body: JSON.stringify({ uris: [] }) }
   );

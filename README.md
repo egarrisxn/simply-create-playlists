@@ -1,185 +1,124 @@
 # Simply Create Playlists
 
-A pnpm workspace for creating Spotify playlists from simple **Artist – Album** lists.
+A monorepo for creating Spotify playlists from simple **Artist – Album** text lists.
+<br>
+This workspace includes a reusable core library, a Node.js CLI, and a Next.js 16 Web application.
 
-This repository is structured as a small monorepo with a reusable core library and a CLI wrapper. The recommended workflow is to build once, then run the CLI from the workspace root.
+## ⚙️ Requirements
 
----
+- Spotify Developer application (Client ID required)
+- Node.js 18+ (tested on Node 25)
+- pnpm (recommended, not required)
 
-## Repository Structure
+## 🏗 Repository Structure
 
-    simply-create-playlists/
-    ├─ packages/
-    │  ├─ playlist-core/                # Core playlist + Spotify logic
-    │  └─ simply-create-playlists-cli/  # CLI wrapper
-    ├─ playlist.txt                     # Your album list (Artist - Album)
-    ├─ .env                             # Spotify credentials (not committed)
-    ├─ .simply-create-playlists-cli.json# Optional local config (not committed)
-    ├─ misses.json                      # Generated output (not committed)
-    ├─ pnpm-workspace.yaml
-    └─ package.json                    # Workspace root
+- **`packages/playlist-core`**: Reusable logic, smart normalization, and Spotify API client.
+- **`packages/simply-create-playlists-cli`**: Command-line tool for local automation.
+- **`packages/simply-create-playlists-web`**: Next.js 16 UI with secure PKCE Auth.
 
----
+## 📦 Package Summaries
 
-## Requirements
+#### playlist-core
 
-- Node.js 18 or newer (tested on Node 25)
-- pnpm
-- A Spotify Developer application (Client ID required)
+The engine of the project. It handles the runCore logic, onProgress callbacks, and Spotify API communication.
 
----
+- Build: pnpm --filter playlist-core build
 
-## Installation
+#### simply-create-playlists-cli
 
-From the workspace root:
+A thin wrapper around the core. Handles file I/O for playlist.txt, misses.json, and CLI arguments via Commander.
 
-    pnpm install
+- Run: pnpm cli <filename>
 
----
+#### simply-create-playlists-web
 
-## Initial Setup (Spotify)
+A modern Next.js interface. Uses Server Components to fetch profile data and Client Components for real-time playlist generation status.
 
-Run the CLI init command once to generate config templates:
-
-    pnpm cli init
-
-This creates:
-
-- .env
-- .simply-create-playlists-cli.json
-
-Fill in your Spotify Client ID in one of them.
-
-Example .env:
-
-    SPOTIFY_CLIENT_ID=your_client_id_here
-    SPOTIFY_REDIRECT_URI=http://127.0.0.1:5173/callback
-    SPOTIFY_PORT=5173
-
-Then add the redirect URI to your Spotify Developer Dashboard:
-
-    http://127.0.0.1:5173/callback
+- Run: pnpm dev:web
 
 ---
 
-## playlist.txt Format
+## 🚨 Critical: Spotify 2025 Security Requirements
+
+Spotify now enforces strict origin matching. To avoid "State Mismatch" errors or authentication loops:
+
+- **Use `127.0.0.1`** instead of `localhost`.
+- **Redirect URI:** Set your Spotify Developer Dashboard to `http://127.0.0.1:3000/api/auth/callback`.
+- **Dev URL:** Access the web app at `http://127.0.0.1:3000`.
+
+## 🚀 Quick Start (Web App)
+
+1. **Install Dependencies:**
+
+   ```bash
+   pnpm install
+   ```
+
+2. **Build Shared Logic:**
+
+   ```bash
+   pnpm build:core
+   ```
+
+3. **Environment Setup: Create packages/simply-create-playlists-web/.env.local:**
+
+   ```bash
+   SPOTIFY_WEB_CLIENT_ID=your_id_here
+   SPOTIFY_WEB_REDIRECT_URI=[http://127.0.0.1:3000/api/auth/callback](http://127.0.0.1:3000/api/auth/callback)
+   ```
+
+4. **Run Web App:**
+   ```bash
+   pnpm dev:web
+   # Open [http://127.0.0.1:3000](http://127.0.0.1:3000)
+   ```
+
+## 💻 CLI Usage
+
+1. **Initialize Config:**
+
+   ```bash
+   pnpm cli init
+   ```
+
+2. **Run Playlist Creation:**
+   ```bash
+   pnpm cli playlist.txt --dry-run
+   ```
+
+## 🧬 Format for playlist.txt
 
 Create a playlist.txt file in the workspace root.
 
-Each line should be:
+- Each line should be:
 
-    Artist - Album
+  ```
+  Artist - Album
+  ```
 
-Example:
+- Example:
 
-    The Starting Line - Say It Like You Mean It
-    New Found Glory - Sticks And Stones
-    Fall Out Boy - Take This To Your Grave
+  ```
+  The Starting Line - Say It Like You Mean It
+  New Found Glory - Sticks And Stones
+  Fall Out Boy - Take This To Your Grave
+  ```
 
 Blank lines and lines starting with # are ignored.
 
 ---
 
-## Build
+## 🛠 Troubleshooting
 
-Build all packages in dependency order:
-
-    pnpm build
-
-This compiles:
-
-- playlist-core → dist/
-- simply-create-playlists-cli → dist/
+| Symptom                        | Likely Culprit     | Fix                                                         |
+| :----------------------------- | :----------------- | :---------------------------------------------------------- |
+| **"Could not find module..."** | Core build missing | Run `pnpm build:core`                                       |
+| **"INVALID_CLIENT"**           | Dashboard Mismatch | Check Client ID in `.env` and Spotify Dashboard             |
+| **"State Mismatch"**           | Cookie Domain      | Stick strictly to `127.0.0.1:3000` (avoid `localhost`)      |
+| **"Syntax Error: ${...}"**     | Template Literal   | Re-check `spotify.ts` for any missing `$` in interpolations |
 
 ---
 
-## Usage
-
-Run the CLI from the workspace root:
-
-    pnpm cli playlist.txt
-
-This will:
-
-- Open Spotify authorization in your browser
-- Create a private playlist
-- Add all album tracks
-- Write misses.json with any failures
-
----
-
-## Dry Run
-
-To preview what would be added without modifying Spotify:
-
-    pnpm cli playlist.txt --dry-run
-
----
-
-## Common Options
-
-    --name <string>        Playlist name
-    --public               Create a public playlist
-    --playlist-id <id|url> Use an existing playlist
-    --replace              Clear playlist before adding tracks
-    --append               Append to existing playlist
-    --only-misses          Retry entries from misses.json
-    --top-track            Add only the first track per album
-
----
-
-## Generated Files
-
-These files are created at runtime and should not be committed:
-
-- .env
-- .simply-create-playlists-cli.json
-- misses.json
-
-Recommended .gitignore entries:
-
-    .env
-    .simply-create-playlists-cli.json
-    misses.json
-    node_modules
-    dist
-
----
-
-## Packages
-
-### playlist-core
-
-Reusable core logic:
-
-- list parsing
-- album matching
-- Spotify API client
-- playlist add / replace behavior
-
-No CLI, no config, no filesystem assumptions.
-
-### simply-create-playlists-cli
-
-Command-line interface:
-
-- argument parsing
-- config loading
-- filesystem I/O
-- calls into playlist-core
-
----
-
-## Development Notes
-
-- Build once with pnpm build
-- Run via pnpm cli from the workspace root
-- The CLI intentionally reads config from the current working directory
-
----
-
-## License
+## 📜 License
 
 MIT
-
-x

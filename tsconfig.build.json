@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "./packages/playlist-core" },
-    { "path": "./packages/simply-create-playlists" }
+    { "path": "./packages/simply-create-playlists-cli" },
+    { "path": "./packages/simply-create-playlists-web" }
   ]
 }

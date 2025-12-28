@@ -2,18 +2,24 @@
   "name": "simply-create-playlists-workspace",
   "version": "1.0.2",
   "description": "This workspace covers multiple ways to simplify the process of creating playlists. More details coming soon!",
-  "license": "MIT",
   "type": "module",
-  "private": true,
+  "license": "MIT",
   "workspaces": [
     "packages/*"
   ],
+  "private": true,
   "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "clean": "tsc -b tsconfig.build.json --clean",
+    "watch": "tsc -b tsconfig.build.json --watch",
     "dev": "pnpm -C packages/simply-create-playlists-cli dev",
     "start": "pnpm -C packages/simply-create-playlists-cli start",
-    "build": "pnpm -r build",
-    "cli": "node packages/simply-create-playlists-cli/dist/cli.js"
+    "cli": "node packages/simply-create-playlists-cli/dist/cli.js",
+    "build:core": "pnpm --filter playlist-core build",
+    "dev:web": "pnpm --filter simply-create-playlists-web dev",
+    "cli:cli": "pnpm --filter simply-create-playlists-cli start"
   },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^25.0.3",
     "typescript": "^5.9.3"

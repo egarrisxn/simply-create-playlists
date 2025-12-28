@@ -1,5 +1,4 @@
 import { albumIdFromOverride, keyFor, parsePlaylistId } from "./normalize.js";
-import type { Entry, MissItem } from "./list.js";
 import {
   getAlbumTracks,
   addTracks,
@@ -13,6 +12,8 @@ export * from "./list.js";
 export * from "./normalize.js";
 export * from "./spotify.js";
 
+import { Entry, MissItem } from "./list.js";
+
 export type RunCoreOptions = {
   entries: Entry[];
   overrides?: Record<string, string>;
@@ -21,14 +22,15 @@ export type RunCoreOptions = {
   dryRun?: boolean;
   onlyMisses?: boolean;
   topTrack?: boolean;
-
-  playlistId?: string; // optional: raw id or url
-  append?: boolean; // default: true if playlistId provided
-  replace?: boolean; // clear before adding
-
+  playlistId?: string;
+  append?: boolean;
+  replace?: boolean;
   accessToken: string;
-
-  description?: string; // optional override
+  description?: string;
+  onProgress?: (
+    status: "loading" | "success" | "miss" | "error",
+    message: string
+  ) => void;
 };
 
 export type RunCoreResult = {
@@ -38,11 +40,22 @@ export type RunCoreResult = {
 };
 
 export async function runCore(options: RunCoreOptions): Promise<RunCoreResult> {
+  const log = (
+    status: "loading" | "success" | "miss" | "error",
+    msg: string
+  ) => {
+    if (options.onProgress) {
+      options.onProgress(status, msg);
+    } else {
+      if (status === "loading") process.stdout.write(msg);
+      else console.log(msg);
+    }
+  };
+
   const playlistName = options.playlistName || "Simply Created Playlist";
   const isPublic = options.isPublic ?? false;
   const dryRun = options.dryRun ?? false;
   const topTrack = options.topTrack ?? false;
-
   const overrides = options.overrides ?? {};
   const entries = options.entries;
 
@@ -51,11 +64,9 @@ export async function runCore(options: RunCoreOptions): Promise<RunCoreResult> {
   }
 
   const token = options.accessToken;
-
   const suppliedPlaylistId = options.playlistId
     ? parsePlaylistId(options.playlistId)
     : null;
-
   const append = options.append ?? Boolean(suppliedPlaylistId);
   const replace = options.replace ?? false;
 
@@ -63,18 +74,17 @@ export async function runCore(options: RunCoreOptions): Promise<RunCoreResult> {
   let playlistUrl: string | null = null;
 
   if (dryRun) {
-    console.log("\nDRY RUN enabled: will not create playlist or add tracks.\n");
+    log(
+      "success",
+      "\nDRY RUN enabled: will not create playlist or add tracks.\n"
+    );
   } else if (suppliedPlaylistId) {
     playlistId = suppliedPlaylistId;
-    console.log(`Using existing playlist: ${playlistId}`);
-    if (replace) {
-      console.log("Replacing: clearing existing playlist first...");
+    log("success", `Using existing playlist: ${playlistId}`);
+    if (replace || !append) {
+      log("loading", "Clearing existing playlist tracks...");
       await clearPlaylist(token, playlistId);
-    } else if (!append) {
-      console.log(
-        "append=false detected without --replace; clearing playlist first..."
-      );
-      await clearPlaylist(token, playlistId);
+      log("success", " Done.\n");
     }
   } else {
     const me = await getMe(token);
@@ -83,11 +93,11 @@ export async function runCore(options: RunCoreOptions): Promise<RunCoreResult> {
       me.id,
       playlistName,
       isPublic,
-      options.description || "Built from album list (album list → playlist)"
+      options.description || "Built from album list"
     );
     playlistId = created.id;
     playlistUrl = created.external_urls.spotify;
-    console.log(`\nCreated playlist: ${playlistUrl}\n`);
+    log("success", `\nCreated playlist: ${playlistUrl}\n`);
   }
 
   const misses: MissItem[] = [];
@@ -96,18 +106,18 @@ export async function runCore(options: RunCoreOptions): Promise<RunCoreResult> {
     const { artist, album } = entries[i];
     const key = keyFor(artist, album);
 
-    process.stdout.write(`[${i + 1}/${entries.length}] ${key} ... `);
+    log("loading", `[${i + 1}/${entries.length}] ${key} ... `);
 
     let albumId: string | null = null;
-
     const override = overrides[key];
+
     if (override) {
       albumId = albumIdFromOverride(override);
-      process.stdout.write("OVERRIDE ");
+      log("loading", "(OVERRIDE) ");
     } else {
       const found = await searchAlbum(token, artist, album);
       if (!found) {
-        console.log("MISS");
+        log("miss", "MISS");
         misses.push({ artist, album });
         continue;
       }
@@ -115,7 +125,7 @@ export async function runCore(options: RunCoreOptions): Promise<RunCoreResult> {
     }
 
     if (!albumId) {
-      console.log("MISS");
+      log("miss", "MISS");
       misses.push({ artist, album });
       continue;
     }
@@ -124,26 +134,26 @@ export async function runCore(options: RunCoreOptions): Promise<RunCoreResult> {
     const toAdd = topTrack ? trackUris.slice(0, 1) : trackUris;
 
     if (!toAdd.length) {
-      console.log("MISS (no tracks)");
+      log("miss", "MISS (no tracks)");
       misses.push({ artist, album });
       continue;
     }
 
     if (dryRun) {
-      console.log(`WOULD ADD (${toAdd.length} tracks)`);
+      log("success", `WOULD ADD (${toAdd.length} tracks)`);
       continue;
     }
 
     if (!playlistId) {
-      console.log("ERROR (no playlist)");
+      log("error", "ERROR (no playlist)");
       misses.push({ artist, album });
       continue;
     }
 
     await addTracks(token, playlistId, toAdd);
-    console.log(`OK (${toAdd.length} tracks)`);
+    log("success", `OK (${toAdd.length} tracks)`);
   }
 
-  console.log("\nDone.");
+  log("success", "\nDone.");
   return { playlistId, playlistUrl, misses };
 }

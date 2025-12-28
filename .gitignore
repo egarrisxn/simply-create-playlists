@@ -1,42 +1,61 @@
-# ---- dependencies ----
+# dependencies
 **/node_modules
 node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# ---- build output ----
+# next.js
+/.next/
+/out/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# builds / production
 **/dist
 dist/
 build/
 out/
+.next/
 .cache/
 
-# ---- environment / secrets ----
+# environment / secrets
 .env
 .env.*
 .env.local
 .env.local.*
+.env.development
+.env.development.*
 .env.production
 .env.production.*
 !.env.example
+.tokens.json
 .simply-create-playlists.json
-.simply-create-playlists-cli.json
 
-# ---- logs ----
+# logs / debug / testing
+*.log
+/coverage
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-*.log
-misses.json
 
-# ---- OS / editor junk ----
+# misc
 .DS_Store
 Thumbs.db
+.vercel
 .vscode/
 .idea/
-
-# ---- TypeScript ----
-*.tsbuildinfo
-
-# ---- misc ----
 *.tmp
 *.swp
+
+# app data
+misses.json
+overrides.json
+playlists.json

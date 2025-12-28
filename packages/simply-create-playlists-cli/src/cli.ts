@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 import fs from "fs";
+import path from "path";
 import { Command } from "commander";
 import { parseListText, runCore, type MissItem } from "playlist-core";
 import { initConfig, loadConfig, readJson, writeJson } from "./config.js";
-import { authorizeWithPkce } from "./auth-node.js";
+import {
+  authorizeWithPkce,
+  refreshAccessToken,
+  type TokenResponse,
+} from "./auth-node.js";
 
 const program = new Command();
 
-program.showHelpAfterError();
-program.showSuggestionAfterError();
+const TOKEN_CACHE = path.join(process.cwd(), ".tokens.json");
+
+program.showHelpAfterError().showSuggestionAfterError();
 
 function readMisses(path: string): MissItem[] {
   if (!fs.existsSync(path)) return [];
@@ -19,51 +25,63 @@ function readMisses(path: string): MissItem[] {
 program
   .name("simply-create-playlists")
   .description("Create a Spotify playlist from an Artist - Album list")
-  .version("1.0.0");
+  .version("1.0.2");
 
 program
   .command("init")
   .description("Create a local config file and .env template")
-  .action(() => {
-    initConfig();
-  });
+  .action(() => initConfig());
 
 program
   .argument("[listPath]", "Path to list file", "playlist.txt")
   .option("-n, --name <string>", "Playlist name", "Simply Created Playlist")
-  .option("--public", "Create a public playlist (default: private)", false)
-  .option("--dry-run", "Do not create playlist or add tracks", false)
-  .option(
-    "--playlist-id <idOrUrl>",
-    "Use an existing playlist id or Spotify URL"
-  )
-  .option(
-    "--append",
-    "Append to the playlist (default when using --playlist-id)",
-    false
-  )
-  .option("--replace", "Clear the playlist before adding tracks", false)
-  .option("--only-misses", "Only process entries in misses.json", false)
-  .option("--top-track", "Add only the first track from each album", false)
+  .option("--public", "Create a public playlist", false)
+  .option("--dry-run", "Do not create playlist", false)
+  .option("--playlist-id <idOrUrl>", "Existing playlist id")
+  .option("--append", "Append tracks", false)
+  .option("--replace", "Replace tracks", false)
+  .option("--only-misses", "Only retry failures", false)
+  .option("--top-track", "Only add one track per album", false)
   .option("--overrides-path <path>", "Path to overrides.json", "overrides.json")
   .option("--misses-path <path>", "Path to misses.json", "misses.json")
   .action(async (listPath: string, opts) => {
     const cfg = loadConfig();
+    let tokens = readJson<TokenResponse | null>(TOKEN_CACHE, null);
+
+    // 1. Try Refreshing if possible
+    if (tokens?.refresh_token) {
+      try {
+        const refreshed = await refreshAccessToken({
+          clientCliId: cfg.clientCliId,
+          refreshToken: tokens.refresh_token,
+        });
+        // Refresh token might not always be returned in a refresh call,
+        // so we merge with existing to keep the original refresh_token
+        tokens = { ...tokens, ...refreshed };
+        writeJson(TOKEN_CACHE, tokens);
+      } catch (e) {
+        console.log("Session expired. Re-authorizing...");
+        tokens = null;
+      }
+    }
+
+    // 2. Full Auth if no valid tokens
+    if (!tokens) {
+      tokens = await authorizeWithPkce(cfg);
+      writeJson(TOKEN_CACHE, tokens);
+    }
 
     const overrides = readJson<Record<string, string>>(opts.overridesPath, {});
-
     const entries = opts.onlyMisses
       ? readMisses(opts.missesPath)
       : parseListText(fs.readFileSync(listPath, "utf8"));
 
     if (!entries.length) {
       console.log(
-        opts.onlyMisses ? "No misses found to retry." : "No entries found."
+        opts.onlyMisses ? "No misses to retry." : "No entries found."
       );
       return;
     }
-
-    const tokens = await authorizeWithPkce(cfg);
 
     const result = await runCore({
       entries,
@@ -79,25 +97,19 @@ program
       accessToken: tokens.access_token,
       description: opts.onlyMisses
         ? `Retrying misses from ${opts.missesPath}`
-        : `Built from ${listPath} (album list → playlist)`,
+        : `Built from ${listPath}`,
     });
 
     writeJson(opts.missesPath, {
       generatedAt: new Date().toISOString(),
-      playlistName: opts.name,
-      listPath,
-      onlyMisses: Boolean(opts.onlyMisses),
-      dryRun: Boolean(opts.dryRun),
-      topTrack: Boolean(opts.topTrack),
       playlistId: result.playlistId,
       playlistUrl: result.playlistUrl,
       misses: result.misses,
     });
   });
 
-// If invoked with no args, show help instead of trying to run.
 if (process.argv.length <= 2) {
-  program.help(); // prints help + exits 0
+  program.help();
 }
 
 await program.parseAsync(process.argv);

@@ -2,13 +2,15 @@ import nodeCrypto from "crypto";
 import http, { type IncomingMessage, type ServerResponse } from "http";
 import open from "open";
 
-type TokenResponse = {
+export type TokenResponse = {
   access_token: string;
   expires_in: number;
   refresh_token?: string;
 };
 
-const SCOPES = ["playlist-modify-private", "playlist-modify-public"] as const;
+const SCOPES = ["playlist-modify-private", "playlist-modify-public"];
+
+const BASE_URL = "https://accounts.spotify.com";
 
 function base64Url(buf: Buffer) {
   return buf
@@ -22,30 +24,50 @@ function sha256(v: string) {
   return nodeCrypto.createHash("sha256").update(v).digest();
 }
 
+export async function refreshAccessToken(params: {
+  clientCliId: string;
+  refreshToken: string;
+}): Promise<TokenResponse> {
+  const res = await fetch(`${BASE_URL}/api/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: params.clientCliId,
+      grant_type: "refresh_token",
+      refresh_token: params.refreshToken,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Refresh failed: ${await res.text()}`);
+  }
+  return (await res.json()) as TokenResponse;
+}
+
 export async function authorizeWithPkce(params: {
-  clientId: string;
-  redirectUri: string;
+  clientCliId: string;
+  redirectCliUri: string;
   port: number;
 }): Promise<TokenResponse> {
-  const { clientId, redirectUri, port } = params;
+  const { clientCliId, redirectCliUri, port } = params;
 
   const verifier = base64Url(nodeCrypto.randomBytes(64));
   const challenge = base64Url(sha256(verifier));
   const state = base64Url(nodeCrypto.randomBytes(16));
 
   const authUrl =
-    "https://accounts.spotify.com/authorize?" +
+    `${BASE_URL}/authorize?` +
     new URLSearchParams({
       response_type: "code",
-      client_id: clientId,
-      redirect_uri: redirectUri,
+      client_id: clientCliId,
+      redirect_uri: redirectCliUri,
       scope: SCOPES.join(" "),
       state,
       code_challenge_method: "S256",
       code_challenge: challenge,
     }).toString();
 
-  const tokens = await new Promise<TokenResponse>((resolve, reject) => {
+  return new Promise<TokenResponse>((resolve, reject) => {
     const server = http.createServer(
       async (req: IncomingMessage, res: ServerResponse) => {
         try {
@@ -60,20 +82,17 @@ export async function authorizeWithPkce(params: {
           if (!code) throw new Error("Missing code");
           if (returnedState !== state) throw new Error("State mismatch");
 
-          const tokenRes = await fetch(
-            "https://accounts.spotify.com/api/token",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: new URLSearchParams({
-                client_id: clientId,
-                grant_type: "authorization_code",
-                code,
-                redirect_uri: redirectUri,
-                code_verifier: verifier,
-              }),
-            }
-          );
+          const tokenRes = await fetch(`${BASE_URL}/api/token`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              client_id: clientCliId,
+              grant_type: "authorization_code",
+              code,
+              redirect_uri: redirectCliUri,
+              code_verifier: verifier,
+            }),
+          });
 
           if (!tokenRes.ok) {
             throw new Error(`Token exchange failed: ${await tokenRes.text()}`);
@@ -82,17 +101,12 @@ export async function authorizeWithPkce(params: {
           const t = (await tokenRes.json()) as TokenResponse;
 
           res.writeHead(200, { "Content-Type": "text/plain" });
-          res.end(
-            "✅ Authorized. You can close this tab and return to your terminal."
-          );
+          res.end("✅ Authorized. You can close this tab.");
 
           server.close();
           resolve(t);
         } catch (e) {
-          try {
-            res.writeHead(500, { "Content-Type": "text/plain" });
-            res.end("❌ Error. Check terminal logs.");
-          } catch {}
+          res.writeHead(500).end("❌ Error in terminal.");
           server.close();
           reject(e);
         }
@@ -101,10 +115,7 @@ export async function authorizeWithPkce(params: {
 
     server.listen(port, "127.0.0.1", () => {
       console.log(`Auth server running on http://127.0.0.1:${port}`);
-      console.log("Opening Spotify authorization in your browser...");
       void open(authUrl);
     });
   });
-
-  return tokens;
 }

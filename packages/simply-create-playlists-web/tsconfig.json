@@ -1,4 +1,5 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -22,6 +23,7 @@
       "@/*": ["./*"]
     }
   },
+  "references": [{ "path": "../playlist-core" }],
   "include": [
     "**/*.mts",
     "**/*.ts",
