@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+
+    "baseUrl": ".",
+    "paths": {
+      "playlist-core": ["packages/playlist-core/src/index.ts"],
+      "playlist-core/*": ["packages/playlist-core/src/*"]
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "simply-create-playlists-cli",
+  "version": "1.0.2",
+  "description": "This CLI will simplify the process of creating playlists. More details coming soon!",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "simply-create-playlists": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": "./dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts --help",
+    "build": "tsc -p tsconfig.json && node ../../scripts/add-shebang.mjs dist/cli.js",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "commander": "^14.0.2",
+    "dotenv": "^17.2.3",
+    "open": "11.0.0",
+    "playlist-core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
